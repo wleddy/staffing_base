@@ -1,0 +1,46 @@
+<p><a class="w3-button w3-primary-color w3-round-large" href="javascript:void(0)" onclick="editFromList('{{ url_for('job.edit_job_from_list')}}0/{{ event_id }}')" >New Job...</a></p>
+<table class="w3-table w3-striped">
+<tr class="w3-primary-color">
+	<th colspan="2">Jobs</th>
+</tr>
+{% if jobs %}
+{% set event_date = ['']%}
+{% for job in jobs %}
+{% if event_date[0] != job.start_date[:10] %}
+    <td colspan="2" class="w3-secondary-color">
+        <p style="margin:0;"><strong>{{job.start_date | abbr_date_string }}</strong></p>
+    </td>
+{% endif %}
+    <tr id="list-row-{{job.job_id}}">
+        <td style="width:12pt;padding:0;">&nbsp;</td>
+        <td>
+            <div class="w3-row">
+                <p class="w3-col w3-threequarter" >
+                    {{ job.job_title | truncate(35)}}<br>
+                    <span class="w3-small">{{ job.job_filled_positions }} of {{ job.max_positions }} : {{ job.start_date | local_time_string }} - {{ job.end_date | local_time_string }}</span>
+                    <br>@ {{ job.job_loc_name | default('tbd',True) }}
+                </p>
+               <div class="w3-col w3-quarter" style="text-align:center;">
+                   <p>
+                    <a class="w3-button w3-primary-color w3-round-large" onclick="editFromList('{{ url_for('job.edit_job_from_list') }}{{job.job_id}}/');">
+                        Edit
+                    </a>
+                </p>
+                <p >
+                    <a class="w3-button w3-primary-color w3-round-large" onclick="editFromList('{{ url_for('job.assignment_manager')}}{{ job.job_id }}')">
+                        Assign
+                    </a>
+                </p>
+                </div>
+            </div>
+                <hr style="margin:0;padding:0;">
+        </td>
+    </tr>
+{% set _ = event_date.pop() %}
+{% set _ = event_date.append( job.start_date[:10] ) %}
+{% endfor %}
+</table>
+{% else %}
+</table>
+<p>No Jobs Yet...</p>
+{% endif %}{# if jobs #}

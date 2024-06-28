@@ -1,0 +1,48 @@
+{% macro status_note(event) %}
+    {% set icon = 'images/check_mark.png' %}
+    {% if event.status.lower() == "pending" %}{% set icon = 'images/question_mark.png' %}{% endif %}
+    {% if event.status.lower() == "cancelled" %}{% set icon = 'images/red_x.png' %}{% endif %}
+    {% if event.status.lower() == "postponed" %}{% set icon = 'images/postponed.png' %}{% endif %}
+    <img src="{{ url_for('static',filename=icon)}}" alt="{{ event.status }}"/>
+    {% if event.status.lower() != "scheduled" %}
+    <span class="w3-small"><em>&mdash; {{ event.status }} &mdash;</em></span><br>
+    {% endif %}
+
+{% endmacro %}
+
+{% for event in event_recs %}
+<div class="w3-row {% if event.is_past_event == 1 %} past-event {% endif %}">
+    <div class="w3-col w3-threequarter">
+        <p>
+            {{ status_note(event) }}
+            <strong>{{event.calendar_title}}</strong> <br>
+            <span class="w3-small">
+            {% if event.job_start_date %}{{event.job_start_date | default('Not Set',True) | short_day_and_date_and_time_string }}
+            {% else %}{{event.service_start_date | default('Not Set',True) | short_day_and_date_and_time_string }}
+            {% endif %} to
+            {% if event.job_end_date %}{{event.job_end_date | default('Not Set',True) | local_time_string }}
+            {% else %}{{event.service_end_date | default('Not Set',True) | local_time_string }}
+            {% endif %}<br>
+            {{ event.event_filled_positions | default("0",True)}} of  {{ event.event_max_positions | default("0",True)}} positions filled
+            <br>
+            @ {{ event.location_name | default('tbd',True) }}
+            </span>
+        </p>
+    </div>
+    <div class="w3-col w3-quarter" style="text-align:center;">
+        <p>
+        <a class="w3-button w3-primary-color w3-round-large" 
+            onclick="$.post('{{ url_for('activity.edit_event')}}{{ event.event_id}}/',$('#main-form').serialize(),function(data){window.location = data;});"
+            >Edit</a>
+        </p>
+        <p>
+            <a class="w3-button w3-primary-color w3-round-large" 
+            onclick="editFromList('{{ url_for('event.manage_event')}}{{ event.event_id }}')"
+            >
+            More...
+            </a>
+        </p>  
+    </div>
+</div>
+<hr class="{% if event.is_past_event == 1 %} past-event {% endif %}">
+{% endfor %}

@@ -1,0 +1,61 @@
+{% extends "form_layout_wide.html" %}
+
+{% from "_form_helpers.html" import input_field, select_field, radio_field, checkbox_field, label_only %}
+
+{% block fieldset %}
+<div class="w3-col w3-half w3-left">
+    {{ input_field(rec.id,"id",type="hidden",default=0)}}
+    <p>{{ input_field(rec.title,'title',label="Activity Title",req=True)}}</p>
+    <p>{{ label_only(label="Description (Appears in Public Calendar)")}}</p>
+    <p><textarea rows="7" name="description" style="width:100%;"  >{{rec.description |default('',True)}}</textarea></p>
+    <p>{{ select_field("activity_type_id","Activity Type", class="w3-border", req=True) }}
+            <option value="">Select an Activity Type</option>
+            {% if activity_types %}
+            {% for act_type in activity_types %}
+                <option value="{{act_type.id}}" {% if act_type.id == rec.activity_type_id | int %}selected="selected" {% endif %}>{{act_type.type}}</option>
+            {% endfor %}
+            {% endif %}
+        </select>
+    </p>
+    <p>{{ label_only(label="Additional Info (Staff View Only)")}}</p>
+    <p><textarea rows="7" name="activity_info" style="width:100%;"  >{{rec.activity_info |default('',True)}}</textarea></p>
+    <h3>Contract Info</h3>
+     <p class="">{{ input_field(rec.contract_date,"contract_date",type="date",placeholder="MM/DD/YYYY")}}</p>
+     <div class="w3-row">
+         {% set per_event_contract_price = rec.per_event_contract_price | money %}
+         <p class="w3-col w3-half">{{ input_field(per_event_contract_price,"per_event_contract_price", type="text",placeholder="0.00")}}</p>
+         {% set total_contract_price = rec.total_contract_price | money %}
+         <p class="w3-col w3-half">{{ input_field(total_contract_price,"total_contract_price", type="text",placeholder="0.00")}}</p>
+    </div>
+    <p>{{ label_only(label="Contract Notes")}}</p>
+    <p><textarea rows="7" name="contract_notes" style="width:100%;"  >{{rec.contract_notes |default('',True)}}</textarea></p>
+    
+</div>
+                
+<div class="w3-col w3-hide-small" style="width:20pt;">&nbsp;</div>
+<div class="w3-col l5 m5 s12" >
+    <div class="w3-card-4" style="padding:6pt;">
+        <div class="w3-row">
+            <p class="w3-col w3-third">
+                {# save current activity record and then go to event input form #}
+                <a class="w3-button w3-primary-color w3-round-large" 
+                onclick="$.post('{{ url_for('activity.edit_event')}}',$('#main-form').serialize(),function(data){window.location = data;});"
+                >
+                    Add Event...
+                </a>
+            </p>
+        </div>
+        <div class="w3-row " style="margin-bottom:6pt;">
+            <p class="w3-primary-color w3-large" style="padding:6pt;"><strong>Events:</strong> <span class="w3-medium">(oldest last)</span></p>
+        </div>
+        <div id="event-list">
+        {% if event_list %}
+            {{ event_list | safe}}
+        {% else %}
+            <h4>No Events Created Yet</h4>
+            <hr>
+        {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock fieldset %}

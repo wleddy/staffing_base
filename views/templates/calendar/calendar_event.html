@@ -1,0 +1,145 @@
+{% extends 'layout.html' %}
+{% from '_staffing_helper_macros.html' import directions_snippet %}
+
+{% block head %}
+    {{ super() }}
+    {% if map_html %}{{ map_html | default('',True) | safe }}{% endif %}
+    <style>
+        #map {height: 60vh;}
+    </style>
+{% endblock head %}
+
+
+{% block body %}
+{# set up the direct link to this event #}
+{% set direct_url = url_for('signup.more_info') + event.activity_id | string  + "/#event-header-" + event.event_id | string  %}
+<div class="w3-panel w3-card-2 w3-secondary-color">
+    <div class="w3-row" style="padding-top:16pt;padding-bottom:16pt;">
+        {% if event.is_past_event %}
+        <h4 class="w3-primary-color w3-center">This event has already happened</h4>
+        {% elif event.status | lower != 'scheduled' %}
+        <h4 class="w3-primary-color w3-center">This event is {{ event.status | upper }}</h4>
+        {% endif %}
+        <div class="w3-col w3-half w3-small" style="padding-left:1%;">
+            {% if event.is_yours and not event.is_past_event and event.status | lower == 'scheduled' %}
+                <p style="padding:6pt;border:2pt solid black;margin:6pt 12pt 6pt 0;text-align:center;" ><strong>You are signed up for this event.</strong>
+                    &nbsp;&nbsp;&nbsp;<a class="w3-button w3-primary-color w3-mobile w3-round-large" href="{{ direct_url }}">View Your Commitment</a></p>
+            {% endif %}
+            <h3>
+                <strong>{{ event.calendar_title}}</strong>
+                {% if g.admin.has_access(g.user,'Events') %}<a href="{{ url_for('event.edit')}}{{ event.event_id }}/"><em class="w3-small">(Edit Event)</em></a>{% endif %}
+            </h3>
+            {% if map_html %}
+            <div class="sg-cal-event-desc">
+                {{ event.event_description | render_markdown }}
+            </div>
+            {% endif %}
+            {% if event.website | weblink %}
+            <p>Event Web Site: {{event.website | weblink }}</p>
+            {% endif %}
+            
+            {% if event.all_day_event %}
+            <p>
+                <em>Date:</em> <strong>{{ event.event_start_date | default('tbd',True)| abbr_date_string }}</strong>
+                {% if event.event_end_date[:10] > event.event_start_date[:10] %}
+                <em>thru</em> <strong>{{ event.event_end_date | default('tbd',True)| abbr_date_string }}</strong>
+                {% endif %}
+            </p>
+            
+            {% else %}
+            <p>
+                <em>Date:</em> <strong>{{ event.event_start_date | default('tbd',True)| abbr_date_string }}</strong>
+            </p>
+            <div class="w3-row">
+                <p class="w3-col l1 m2 s2 w3-right-align">
+                    <em>Times:</em>&nbsp;
+                </p>
+                <p class="w3-col l11 m10 s10">
+                    <strong>{{ event.event_start_label | default("Event Starts", True) }}</strong>: {{ event.event_start_date | default('tbd',True) | local_time_string }}  &ndash; 
+                    <strong>{{ event.event_end_label | default("Event Ends", True)}}</strong>: {{ event.event_end_date  | default('tbd',True) | local_time_string }}
+                </p>
+            </div>
+            {# if the event/service times and labels are identical, don't display the service set #}
+            {% if event.event_start_label ==  event.service_start_label and event.event_start_date == event.service_start_date and event.event_end_label == event.service_end_label and event.event_end_date == event.service_end_date %}
+            {# show nothing #}
+            {% else %}
+            <div class="w3-row">
+                <div class="w3-col l1 m2 s2">&nbsp;</div>
+                <div class="w3-col  l11 m10 s10">
+                    <p>
+                        <strong>{{ event.service_start_label | default("Service Starts", True) }}</strong>: {{ event.service_start_date | default('tbd',True)| local_time_string }}  &ndash; 
+                        <strong>{{ event.service_end_label | default("Service Ends", True)}}</strong>: {{ event.service_end_date | default('tbd',True) | local_time_string }}
+                    </p>
+                </div>
+            </div>
+            {% endif %} {# service times different #}
+            {% endif %} {# all day event #}
+
+            {# a link to add this event to your calendar #}
+            {% if not event.is_past_event and event.status | lower == 'scheduled' %}
+            <p class="w3-medium">
+                <a style="text-decoration:none;" href="{{ url_for('.event_calendar_item') }}{{event.event_id}}/"><img src="{{ url_for('static',filename='anytime/calendar.png')}}"/></a>
+                <a href="{{ url_for('.event_calendar_item') }}{{event.event_id}}/"> Add to your Calendar</a>
+            </p>
+            {% endif %}
+
+            {# location info #}
+            {% if event_locations %}
+            <div class="w3-row">
+                <p class="w3-col l1 m2 s2 w3-right-align">
+                    <em>Place{% if event_locations | length > 1 %}s{% endif %}:</em>&nbsp;
+                </p>
+                <div class="w3-col  l11 m10 s10">                    
+                        {% for loc in event_locations %}
+                            <p>
+                                <strong>{{ loc.location_name | default('tbd',True) }}</strong>
+                                <br>{{ loc.street_address }}, {{ loc.city }}
+                            </p>
+                            {% if loc.lat and loc.lng %}
+                                <div style="margin-bottom:10pt;">
+                                    {{ directions_snippet(loc) }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+            
+            {# build link to best signup page #}
+            {% if not event.is_yours or event.is_past_event %}
+                <div>
+                {# default link to generic signup list #}
+                {% set vol_url = url_for('signup.display') %}
+                {# if user has no role for this event, show default signup list #}
+                {% if not has_required_role %}
+                    {# do nothing#}
+                {% else %}
+                    {# link to the signup for this event #}
+                    {% if event.is_past_event == 0 and event.activity_id and event.event_max_positions > 0 %}
+                       {% set vol_url = direct_url  %}
+                    {% endif %}
+                    {# link to future signups for this activity #}
+                    {% if event.is_past_event == 1 and event.has_future_events == 1 %}
+                       {% set vol_url = url_for('signup.more_info') + event.activity_id | string  %}
+                    {% endif %}
+                {% endif %}
+                <p class="w3-medium">
+                    Would you like to help? <a href="{{ vol_url }}">Click here to Volunteer...</a>
+                </p>
+                </div>
+            {% endif %}
+            
+        </div>
+        {% if map_html %}
+        <div id="map" class="w3-col w3-half w3-card-2"></div>
+        {% else %}
+        <div class="w3-col w3-half">
+        <div id="no_map" class="w3-large w3-bold w3-padding" style="border: solid 2pt black">{{ event.event_description | render_markdown }}</div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+<div class="w3-panel w3-card-2 w3-secondary-color">
+    <h3 style="text-align:center;cursor:pointer" onclick="window.history.back();return false;">&larr; Back</h3>
+</div>
+{% endblock body %}

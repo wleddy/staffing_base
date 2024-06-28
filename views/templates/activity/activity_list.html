@@ -1,0 +1,26 @@
+{% extends "layout.html" %}
+{% block title %}{{ g.title }}{% endblock %}
+{% from "_layout_helpers.html" import list_search_widget %}
+{% block body %}
+
+      	<p id="addRecord">
+        <a href="{{ g.editURL }}0/">Add a new record</a>
+        &nbsp;&nbsp;{{ list_search_widget('activity',{'Id':0,'Activity Title':1,},1) }}
+    </p>
+	{%if recs %}
+		<table id="table_list" class="datatable w3-table w3-striped w3-hoverable">
+		<tr class="w3-primary-color">
+			<th class="w3-hide-small">Id</th>
+			<th>Activity Title</th>
+		</tr>
+		{% for rec in recs %}
+	    <tr>
+			<td onclick="window.location='{{ g.editURL }}{{rec.id}}/'"  class="w3-hide-small">{{ rec.id }}</td>
+			<td onclick="window.location='{{ g.editURL }}{{rec.id}}/'">{{ rec.title }}</td>
+		</tr>
+		{% endfor %}
+	  </table>
+  	{% else %}
+    	<p><em>No records here so far</em></p>
+	{% endif %}
+{% endblock %}

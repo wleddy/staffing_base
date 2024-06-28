@@ -1,0 +1,35 @@
+<div class="event-contain w3-row-padding w3-secondary-color w3-center" style="padding:20pt;"> 
+    {% set shift_count = 1 %}
+    <input type="hidden" name="positions" value="{{shift_count}}">
+    {% if signup_status == "success" %}
+    <p>
+        <span class="w3-xxlarge">Thanks!</span>
+       <br><em>(You'll receive an email with all the details for your calendar.)</em>
+   </p>
+   {% elif signup_status == "full" %}
+        <p>
+            <span class="w3-xxlarge">Sorry!</span>
+           <br><em>Looks like someone already took that spot.</em><br>
+            <em>(Try refreshing your browser to get a fresh list)</em>
+      </p>
+     {% elif signup_status == "employee_limited" %}
+        <p>
+            <span class="w3-xlarge w3-bold">It is too close to the event to Cancel your assignment</span>
+           <br><br>
+           Please contact your manager if you can't make it to your assignment.<br>
+           You are still responsible for your shift.<br>
+      </p>
+      <p>
+          <a href="{{ url_for('.contact_event_manager') }}{{ job_id }}" class="w3-button w3-primary-color w3-round-medium">Contact the event manager</a>
+      </p>
+            
+    {% else %}
+       <p>
+           Sorry you had to cancel. Hope to see you at another event soon.
+       </p>
+   {% endif %}
+    <p>
+    	<a class="w3-button w3-primary-color w3-round-medium " onclick="cancelModalForm()">Close</a>
+    </p>
+</div>
+

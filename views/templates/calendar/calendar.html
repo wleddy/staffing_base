@@ -1,0 +1,333 @@
+{% extends 'layout.html' %}
+
+{% block head %}
+    {{ super() }}
+    
+    {% include "anytime_head.html"%}
+
+    <style>
+       @font-face {
+          font-family: condensed-font;
+          src: url("{{ url_for('static', filename='fonts/sans_condensed.ttf')}}") format("truetype");
+        }
+
+        .day-col{
+            width:14.2857142857142857%;
+        }
+        .full_day_display{
+            position:absolute;
+            white-space: nowrap;
+            overflow:hidden;
+            text-overflow:ellipsis;
+            background-color:white;
+            width:14.2857142857142857%;
+            z-index:3000;
+            display:none;
+        }
+        .group_check_box, .group_uncheck_box {
+            margin:2pt 2pt !important;
+            padding-left:16pt !important;
+            padding-top:2pt !important;
+            background-image: url('/static/images/input_checked.png');
+            background-repeat:no-repeat;
+            line-height:1.2;
+            width:19.3%;
+        }
+        .group_uncheck_box{
+            background-image: url('/static/images/input_unchecked.png');
+        }
+      .day-content, .group_check_box, .group_uncheck_box{
+                font-family: condensed-font, sans-serif;
+                font-size:1.05em;
+                line-height:1;
+                white-space: nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                cursor:pointer;
+                padding-top: 2pt;
+                padding-left:2pt;
+        }
+        p.day-content{
+            margin-bottom: 0.1em;
+        }
+        .day-name, .month-name{
+            text-align:center;
+            font-weight:bold;
+        }
+        .month-name{
+            padding:6pt 0;
+            margin:0;
+        }
+        #calendar-contain{
+            margin:0 auto;
+            width:90%;
+/*            max-width:1000px;*/
+        }
+        @media (max-width:993px){
+            #calendar-contain{
+                width:99%;
+            }
+        }
+        @media (max-width:760px){
+            .group_check_box, .group_uncheck_box {
+                width:100%;
+            }
+        }
+        
+        #calendar-contain .w3-row p.w3-col {
+            margin:0;
+        }
+        .day-cell{
+            height:80pt;
+            overflow-y:auto;
+            overflow-x:hidden;
+        }
+        .day-number, .day-other-number{
+            text-align:right;
+            font-weight:bold;
+            padding-right:6pt;
+        }
+        .day-other-number {
+            color:#a3a1a1;
+        }
+        .today {
+            color:white;
+            background-color:red;
+        }
+        .month_arrow, .month_arrow a{
+            text-decoration:none;
+        }
+        #coverup{
+            position:absolute;
+            top:0;
+            left:0;
+            display:none;
+            height:1000pt;
+            width:100%;
+            z-index:2000;
+        }
+        
+        .theres-more,.theres-more-yours {
+            cursor:pointer;
+        }
+        
+        .yours::before, .yours-caption::before, .theres-more-yours::before {
+            content: url('/static/images/check_mark.png');
+        }
+       .theres-more-yours {
+            background-color: rgba(128, 64, 3, 0.5);
+        }
+        .yours-caption {
+        }
+        .all-day-event::after {
+            content: ' (All day)';
+            font-style:italic;
+        }
+   </style>
+
+    <script>
+        function show_full_day(day_number){
+            $('#full_day_display_'+day_number.toString()).show()
+            $('#coverup').show()
+        }
+        function hide_full_day(){
+            $('#coverup, .full_day_display').hide()
+        }
+        function get_job_email(){
+            if(confirm("Get an email with all your future commitments?")){
+                editFromList('{{url_for('signup.send_user_commitment_email')}}{{g.user}}')
+            }
+        }
+    </script>
+{% endblock head %}
+
+{% macro calendar_entry(event)%}
+    {% set status_var = True %}
+    <p grp="{{ event.activity_group_id }}" onclick="location='{{ url_for('calendar.event')}}{{event.id}}'" class="day-content {{ event.activity_group_style }} {%if event.is_yours and event.status | lower == 'scheduled' %}yours{% endif %} {% if event.all_day_event %}all-day-event{% endif %}">
+        {% if event.status | lower != 'scheduled' %}
+        <span class="w3-tiny">[{{ event.status | upper }}]<br>&nbsp;</span>
+        {% endif %}
+        {{event.event_title}}
+    </p>
+{% endmacro %}
+
+{% macro activity_filter() %}
+<nav id="activity_type_filter">
+    <div class="w3-row-padding w3-padding-bottom">
+        <h4>Select Event Types to Display</h4>
+        {% if activity_groups %}
+            <div class="w3-row" style="margin-bottom:.4em">
+            {% set group_count = [0]%}
+            {% for group in activity_groups %}
+                {% set _  = group_count.append(group_count[0]+ 1) %}{% set _ = group_count.pop(0) %}
+                {% if group_count[0] % 7 == 0 %}<br>{% endif %}
+                <p class="w3-col group_check_box {{group.display_style}}" checked="checked" style="padding:0 4pt 1pt 2pt;" id="activity_group_{{group.id}}" value="{{ group.id }}" onclick="save_filter(this)">&nbsp;{{ group.name | replace(' ','&nbsp;') | safe }}</p>
+                <span class="w3-hide-medium w3-hide-large"><br></span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p>Humm... Something went wrong here.</p>
+        {% endif %}
+    </div>
+</nav>
+{% endmacro %}
+
+
+{% block body %}
+<div id="coverup" onclick="hide_full_day()">&nbsp;</div>
+{% if cal_list %}
+    {% set _ = calendar.setfirstweekday(calendar.SUNDAY) %}
+    <div id="calendar-contain">
+        <div class="w3-row  w3-border  w3-card-2" style="margin-bottom:6pt;">
+            {% if g.user %}
+            <p class="w3-col l3 m4 s12 w3-center">
+                <span class="yours-caption" style="position:relative;top:2pt;">&nbsp;Your Commitments</span></p>
+                <p class="w3-col l3 m4 s12 w3-center"><span class="w3-large">@</span> 
+                <a href="#" onclick="get_job_email();">Email your jobs...</a>
+            </p>
+            {% endif %}
+            {{ activity_filter() }}
+        </div>
+        
+        <div class="w3-row">
+            <p class="w3-col w3-full w3-large w3-primary-color month-name">
+                <select id="date-selector" class="w3-select" style="width:auto;" onchange="goto_month(this)">
+                    <option value="{{today.month}}/{{today.year}}">Today</option>
+                    {% set month = [display_date.month]%}
+                    {% set year = [display_date.year] %}
+                    {% for x in [-1,0,1,2,3,] %}
+                    {% set _ = month.append(display_date.month+x)%}{% set _ = month.pop(0) %}
+                    {% set _ = year.append(display_date.year)%}{% set _ = year.pop(0) %}
+                    {% if month[0] == 0 %}
+                        {% set _ = month.append(12)%}{% set _ = month.pop(0) %}
+                        {% set _ = year.append(display_date.year-1)%}{% set _ = year.pop(0) %}
+                    {%endif%}
+                    {% if month[0] > 12 %}
+                        {% set _ = month.append(month[0]-12)%}{% set _ = month.pop(0) %}
+                        {% set _ = year.append(display_date.year+1)%}{% set _ = year.pop(0) %}
+                    {%endif%}
+                        <option value="{{month[0]}}/{{year[0]}}" {% if x == 0 %}selected{% endif%} >
+                            {{ calendar.month_name[month[0]]}} {{ year[0] }}
+                        </option>
+                    {% endfor%}
+                </select>
+                <input id="picker-input" 
+                    style="width:0pt;border:none;padding:0;" 
+                    class="w3-primary-color"
+                    />
+                <a style="text-decoration:none;padding:2pt 4pt 3pt 4pt;" href="javascript:addPicker('picker-input','%c/%Y')"  class="DatePickerButton w3-secondary-color"><img src="{{ url_for('static', filename='anytime/calendar.png' ) }}" alt="[calendar icon]"/></a>
+                &nbsp;<input type="button" 
+                    id="go-button" value="Go" class="w3-secondary-color"
+                    style="border:0;padding:0 2.5pt;line-height:1.7;border-radius:4pt;"
+                    onclick="goto_month('#picker-input')"
+                    />
+            </p>
+        <div class="w3-row">
+            {%for day in calendar.weekheader(3).split(' ') %}
+            <p class="w3-col w3-border w3-secondary-color day-name day-col">{{ day }}</p>
+            {% endfor %}
+        </div>
+        {% for week in cal_list %}
+        <div class="w3-row">
+                {% for day in week %}
+                {% set events_today = day[1] | length %}
+                {% set day_number = day[0].day %}
+                {% set yours_are_hidden = [False] %}
+                <div class="w3-col w3-border day-col day-cell" style="padding:0 2pt;">
+                    {% set _ = yours_are_hidden.pop(0) %}
+                    {% set _ = yours_are_hidden.append(False) %}
+                    
+                    {# All events list #}
+                    <div id="full_day_display_{{day[0]}}" class="full_day_display w3-border">
+                        <p class="day-number w3-primary-color">{{ day_number }}</p>
+                        {% for event in day[1] %}
+                            {{ calendar_entry(event) }}
+                            {% if day[1] | length > 2 and event.is_yours %}
+                                {% set _ = yours_are_hidden.pop(0) %}
+                                {% set _ = yours_are_hidden.append(True) %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    <p class="day-number 
+                    {% if day[0] == today.date() %}today
+                    {% else %}
+                        {% if day[0].month != display_date.month %}day-other-number {% endif %}
+                    {% endif %}
+                    ">
+                    {{ day_number }}
+                    </p>
+                    {# events that fit list #}
+                    <div>
+                        {% set event_count = [0] %}
+                        {% for event in day[1] %}
+                            {% set _ = event_count.append(event_count[0] + 1) %}
+                            {% set _ = event_count.pop(0) %}
+                            {% if event_count[0] <= 2 or events_today < 4 %}
+                            {{ calendar_entry(event) }}
+                            {% endif %}
+                        {% endfor %}
+                        {# lump all the extra events into a "more" line #}
+                        {% if events_today > 3 %}
+                        <p class="theres-more{% if yours_are_hidden[0] %}-yours{% else %} w3-primary-color {% endif %}" onclick="show_full_day('{{day[0]}}')">&amp; {{ day[1] | length - 2}} more...</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+        </div>
+        {% endfor %}
+        <div class="w3-row">
+            <p class="w3-col w3-full w3-large w3-primary-color month-name month_arrow">
+                <a id="next_month_link" href="{{g.listURL}}{{next_month.month}}/{{next_month.year}}" >Go To {{ calendar.month_name[next_month.month] }}&nbsp;{{ next_month.year }}&nbsp;&darr;</a>
+            </p>
+        </div>
+    </div>
+{% else %}
+<h3>Well, that's odd... there's no calendar to display...</h3>
+{% endif %}
+
+<script>
+    function save_filter(checkbox){
+        // save the change to session
+        // adding a group hides it from the display
+        var action = 'remove';
+        var elm = $('#'+checkbox.id);
+        var checked = elm.attr('checked');
+        var grp_id =elm.attr('value');
+        if (checked == 'checked'){ 
+            action='add'; 
+            elm.attr('checked',false);
+            elm.removeClass('group_check_box');
+            elm.addClass('group_uncheck_box')
+        } else { 
+            elm.attr('checked','checked'); 
+            elm.addClass('group_check_box');
+            elm.removeClass('group_uncheck_box')
+        }
+        $.get('{{ url_for('calendar.save_group_filter')}}'+action+'/'+grp_id+"/");
+        
+        group_toggle(grp_id);
+    }
+    function group_toggle(value){
+        $('[grp='+value+']').toggle()
+    }
+    // recover group filter from session
+    // all are enabled by default so only hide those in set
+    var elm;
+    {% if 'calendar_group_filter' in session %}
+        {% for group_id in session['calendar_group_filter'] %}
+            group_toggle({{group_id}})
+            elm = $('#activity_group_'+{{group_id}});
+            elm.attr('checked',false);
+            elm.removeClass('group_check_box');
+            elm.addClass('group_uncheck_box')
+        {% endfor %}
+    {% endif %}
+    
+    // set the default anytime date to the value of the select object
+    $('#picker-input').val($('#date-selector').val())
+    // jump to the selected month
+    function goto_month(date_field_id){
+        location='{{ url_for('calendar.display')}}' + $(date_field_id).val()
+    }
+</script>
+{% endblock body %}

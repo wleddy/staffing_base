@@ -1,0 +1,13 @@
+{% extends 'layout.html' %}
+
+
+{% block dialog %}
+<div id="dialog"></div>
+<div id="modal-form-contain" class="w3-modal" style="overflow:hidden;padding-top:20pt!important;">
+    <div id="modal-form" class="w3-modal-content w3-animate-top" style="max-height:95vh;overflow:scroll;background:transparent;"></div>
+</div>
+{% endblock dialog %}
+
+{% block page_header %}
+    {% include "signup_page_header.html"%}
+{% endblock page_header %}

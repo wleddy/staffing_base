@@ -1,0 +1,275 @@
+{% from "_form_helpers.html" import input_field, select_field, radio_field, checkbox_field, label_only %}
+
+
+{% extends "form_layout.html" %}
+
+{% block head %}
+    {{ super() }}
+    
+    {% include "anytime_head.html"%}
+{% endblock head %}
+
+{% block fieldset %}
+    {% if rec.start_date %}
+        {% set start_date = rec.start_date | short_date_string %}
+        {% set start_time = rec.start_date | local_time_string %}
+    {% else %}
+        {% set start_date = rec.job_start_date | short_date_string %}
+        {% set start_time = rec.job_start_date | local_time_string %}
+    {% endif %}
+    {% if rec.end_date %}
+        {% set end_date = rec.end_date | short_date_string %}
+        {% set end_time = rec.end_date | local_time_string %}
+    {% else %}
+        {% set end_date = rec.job_end_date | short_date_string %}
+        {% set end_time = rec.job_end_date | local_time_string %}
+    {% endif %}
+    
+    {{ input_field(rec.id,"id",type="hidden",default=0)}}
+    <div class="w3-container" >
+        {% if rec.id and rec.task_id == None %}
+        <h3 class="w3-panel w3-primary-color">{{rec.activity_title}}</h3>
+        <p class="w3-medium">
+            Name: {{ rec.first_name}} {{rec.last_name}}<br>
+            Event: {{ rec.calendar_title }}<br>
+            Job: {{ rec.job_title }}<br>
+            Date: {{ rec.job_start_date | abbr_date_string }}, Sched.: {{ rec.job_start_date | local_time_string }} to {{ rec.job_end_date | local_time_string }}
+        </p>
+        {% else %}{# ad hoc attendance #}
+        
+        {# important that this field only be included when recording "ad hoc" activities #}
+        {{ input_field(rec.task_user_id,"task_user_id",type="hidden",id="task_user_id")}}
+        
+        <h3 class="w3-panel w3-primary-color">Ad Hoc Attendance Record</h3>
+        {% if rec.task_user_id and rec.id != None %}
+        <p class="w3-medium">Name: {{ rec.first_name}} {{rec.last_name}}</p>
+        {% else %}
+        <div class="w3-row" id="task_user_search">
+            <div  class="w3-col">
+                <p>{{ label_only("Find User",req=True )}}</p>
+                <p><input id="user_search" type="text" name="user_name" value="{% if rec.task_user_id %}{{ rec.first_name | default('',True)}} {{rec.last_name | default('',True)}}{% endif %}" class="w3-input w3-border" placeholder="Type name"
+                onkeyup="if (this.value.length > 0) {$('#user_results').show();table_search('user_search','all_users',1)} else {$('#user_results').hide();reset_table_search('all_users');}"
+                onfocus="$('#user_results').show();" 
+                onchanges="if($('#task_user_id').val()==''){alert('You have click on a user name...');$('#user_search').focus()}"
+                />
+            </p>
+            <div style="position:relative;">
+                <div id="user_results" class="w3-border w3-row" 
+                    style="z-index:10000;position:absolute;overflow-y: scroll;background-color:white;display:none;">
+                    	<table id="all_users" class="datatable w3-table w3-striped w3-hoverable" >
+                    	{%if users %}
+                    		{% for user in users %}
+                    	    <tr onclick="$('#task_user_id').val({{user.id}});$('#user_search').val('{{ user.first_name }} {{ user.last_name }}');$('#user_results').hide();">
+                                <td style="display:none;">{{ user.id }}</td>
+                    			<td style="min-width:220pt;">{{ user.first_name }} {{ user.last_name }}</td>
+                    		</tr>
+                    		{% endfor %}
+                            {% else %}
+                            <tr>
+                    			<td>No Users Found?</td>
+                            </tr>
+                            {% endif %}
+                    	 </table>
+                </div>
+            </div>
+          </div>
+        {% endif %}{# end if user name#}
+        <div class="w3-row" >
+            {{ select_field('task_id',label='Select Task')}}
+            <option value="-1">Select a Task</option>
+            {% if tasks %}
+            {% for task in tasks %}
+                <option value="{{task.id}}" {% if rec.task_id |default(0,True) | int == task.id %}selected="selected" {%endif %}>{{ task.name }}</option>
+            {% endfor %}
+            {% endif %}
+        </select>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div id="tab-bar" class="w3-bar" style="border-bottom:2pt solid #ccc;margin-top:10pt">
+      <button id="date-button" class="w3-bar-item w3-button w3-primary-color button-class" onclick="return openTabById(this,'button-class','dateAndTime','input-tab');">Enter Date/Time</button>
+      <button id="hours-button" class="w3-bar-item w3-button w3-secondary-color button-class" onclick="return openTabById(this,'button-class','hours','input-tab')">Enter Hours</button>
+    </div>
+    
+    <div id="no_show_box" class="w3-container w3-row" >
+        <p class="w3-col w3-quarter w3-large w3-right" style="border:1.5pt red dashed;padding:2pt 0 4pt 8pt;">
+        {% set checked = 'checked="checked"' if rec.no_show | string == '1' else '' %}
+        {% set extra_stuff =  'style="width:auto;" '+ checked %}
+        {{ checkbox_field('no_show','no_show_checkbox',label='No Show',id='no_show', extras=extra_stuff, )}}
+    </div>
+    <div id="dateAndTime" class="w3-container input-tab">
+         <p class="w3-xlarge">{{ label_only("Enter your attendance start and end times")}}</p>
+        <div class="w3-row">
+            <div class="w3-col w3-half" style="padding-right:6pt">
+                <div class="w3-row">
+                    <div class="w3-col w3-half">
+                        <p style="padding-right:3pt">{{ label_only("Start Date") }}</p>
+                        <div class="w3-row">
+                            <p class="w3-col l8 m8 s8">
+                                {{ input_field(start_date,'att_start_date',type='text', id='start_date', label=None)}}
+                            </p>
+                            <p class="w3-col l2 m2 s2 ">
+                                <a href="javascript:addPicker('start_date','%m/%d/%y')"  class="DatePickerButton">
+                                <img src="{{ url_for('static', filename='anytime/calendar.png' ) }}" alt="[calendar icon]"/>
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="w3-col w3-half" >
+                        <p>{{ label_only("Start Time") }}</p>
+                        <div class="w3-row">
+                            <p class="w3-col" >
+                                {{ input_field(start_time,'att_start_time',id='start_time', label=None)}}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="w3-col w3-half">
+                <div class="w3-row">
+                    <div class="w3-col w3-half" >
+                        <p style="padding-right:3pt">{{ label_only("End Date") }}</p>
+                        <div class="w3-row">
+                            <p class="w3-col l8 m8 s8">
+                                {{ input_field(end_date,'att_end_date',type='text', id='end_date', label=None, )}}
+                            </p>
+                            <p class="w3-col l2 m2 s2 ">
+                                <a href="javascript:addPicker('end_date','%m/%d/%y')"  class="DatePickerButton">
+                                <img src="{{ url_for('static', filename='anytime/calendar.png' ) }}" alt="[calendar icon]"/>
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="w3-col w3-half" >
+                        <p>{{ label_only("End Time") }}</p>
+                        <div class="w3-row">
+                            <p class="w3-col" >
+                                {{ input_field(end_time,'att_end_time',id='end_time', label=None, )}}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- hours input tab -->
+    <div id="hours" class="w3-container input-tab" style="display:none">
+        <p class="w3-xlarge">{{ label_only("Enter Hours worked")}}</p>
+        <div class="w3-row">
+            <div class="w3-col w3-half" style="padding-right:6pt;">
+                <div class="w3-row">
+                    <div class="w3-col w3-half" >
+                        <p style="padding-right:3pt">{{ label_only("Start Date") }}</p>
+                        <div class="w3-row">
+                                    <p class="w3-col l8 m8 s8">
+                                        {{ input_field(start_date,'start_date_for_hours',type='text', id='start_date_for_hours', label=None)}}
+                                    </p>
+                                    <p class="w3-col l2 m2 s2 ">
+                                        <a href="javascript:addPicker('start_date_for_hours','%m/%d/%y')"  class="DatePickerButton">
+                                        <img src="{{ url_for('static', filename='anytime/calendar.png' ) }}" alt="[calendar icon]"/>
+                                        </a>
+                                    </p>
+                            </div>
+                        </div>
+                        
+                            <div class="w3-col w3-half" >
+                                <p>{{ label_only("Start Time") }}</p>
+                                <div class="w3-row">
+                                    <p class="w3-col" >
+                                        {{ input_field(start_time,'start_time_for_hours',id='start_time_for_hours', label=None)}}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                                
+                                
+                    <div class="w3-col w3-half" >
+                        <p>{{ label_only("Hours Worked") }}</p>
+                        <p> {{ input_field(shift_hours,'shift_hours',id='shift_hours', label=None, default='0', extras="disabled")}}</p> 
+                    </div>
+                </div>
+            </div>
+    
+    <p class="w3-row">&nbsp;</p>
+    <div class="w3-row w3-container">
+        <p class="w3-col w3-third" style="padding-right:3pt">{{ input_field(rec.mileage,'mileage',label="Mileage",placeholder="Miles")}}</p>
+        <div   class="w3-col w3-twothird" style="border:1pt solid #ccc" >
+            <p>{{ label_only("Comments")}}</p>
+            <p><textarea class="w3-input" name="comment" rows="5" placeholder="Anything Broken? Any problems?">{{ rec.comment | default("",True) }}</textarea></p>
+        </div>
+    </div>
+    
+    <script>
+        $("#start_time").AnyTime_picker(
+            { format: "%l:%i%p" } );
+        $("#end_time").AnyTime_picker(
+            { format: "%l:%i%p" } );
+        $("#start_time_for_hours").AnyTime_picker(
+            { format: "%l:%i%p" } );
+            
+        {% if not is_admin %}
+            $('#main-form').submit(function(){return confirm("When submitting this form you are stating that you worked the hours your've recorded.");});
+        {% endif %}
+        
+        
+        // handle tabs
+        function openTabById(targetButton,buttonClass,tabID,tabSetClass) {
+          var i;
+          var x = document.getElementsByClassName(tabSetClass);
+          var bc = document.getElementsByClassName(buttonClass);
+          var y = document.getElementById(targetButton.id);
+          for (i = 0; i < x.length; i++) {
+              x[i].style.display = "none";  
+          }
+          for (i = 0; i < bc.length; i++) {
+              bc[i].classList.remove("w3-primary-color"); 
+              bc[i].classList.remove("w3-secondary-color");   
+              bc[i].classList.add("w3-secondary-color");   
+          }
+          document.getElementById(tabID).style.display = "block";  
+          y.classList.remove("w3-secondary-color");  
+          y.classList.add("w3-primary-color");
+          
+          // disable a bunch of fields
+          $('#start_date,#start_time,#end_date,#end_time,#shift_hours,#start_date_for_hours,#start_time_for_hours').prop('disabled',true);
+          // then enable the ones we want to submit
+          if (tabID == 'hours'){
+              $('#shift_hours,#start_date_for_hours,#start_time_for_hours').prop('disabled',false);
+          } else {
+              $('#start_date,#start_time,#end_date,#end_time').prop('disabled',false);
+          }
+          
+          // remember the tab selected for admins
+          {% if is_admin %}
+              $.post("{{ url_for('attendance.tab_select')}}",{'tab_clicked':targetButton.id});
+          {% endif %}
+          
+          // for some reason clicking the tab submits the form
+          return false;
+        }
+        
+        function formSetup() {
+            /*
+                if  attendance_tab_state in session, 
+                    set show the tab and select the tab state
+            */
+            
+            {% if is_admin %}
+                var is_admin = true;
+                {% if 'attendance_tab_select' in session %}
+                    var default_tab = '{{ session.attendance_tab_select }}';
+                    $('#'+default_tab).click();
+                {% endif %}
+            {% else %}
+                var is_admin = false;
+            {% endif %}
+            
+        }
+        $("#user_search").prop({'autocomplete':'off'})
+        $(document).ready(function(){formSetup();});
+        
+    </script>
+{% endblock fieldset %}

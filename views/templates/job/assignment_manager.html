@@ -1,0 +1,133 @@
+<style>
+/* width */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #f1f1f1; 
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #888; 
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #555; 
+}
+</style>
+
+<div id="assignment_manager_layout" style="overflow-y:scroll;">
+    <div id="assignment_head">
+        <h3 class="w3-primary-color" style="padding-left:6pt;">{{ job.activity_title }}</h3>
+        <h4>{{ job.job_title }}&nbsp;&nbsp;&mdash;&nbsp;&nbsp;{{ job.start_date | short_abbr_date_string }}, {{ job.start_date | local_time_string | lower }} - {{ job.end_date | local_time_string | lower }}</h4>
+    </div>
+
+    <div id="assignment_attendee_table" style="height:120pt;max-heignt:120pt;overflow-y:scroll;">
+    	<table class="datatable w3-table w3-striped w3-hoverable" >
+            <tr class="w3-secondary-color">
+            	<th>Assigned</th>
+                <th>Del.</th>
+            </tr>
+            
+    	{%if assigned_users %}
+    		{% for user in assigned_users %}
+    	    <tr>
+    			<td>{{ user.first_name }} {{ user.last_name }}</td>
+                <td><a href="javascript:void(0)" style="text-decoration:none;" onclick="if (confirm('Are You Sure?')){editFromList('{{url_for('job.assignment_manager_delete')}}{{ job.job_id }}/{{ user.id }}')}else{return false;}" class="w3-text-red w3-xlarge">X</a></td>
+    		</tr>
+    		{% endfor %}
+            {% else %}
+            <tr>
+    			<td>No Assignments</td>
+            </tr>
+            {% endif %}
+    	  </table>
+    </div>
+
+
+    <div id="assignment_details">
+        <form id="assignmentModalForm"  action="" method="POST">
+            <input type="hidden" name="id" value="{{job.job_id}}">
+            <input id="assignment_user_id" type="hidden" name="assignment_user_id" value="0">
+            <div class="w3-row">
+                <div class="w3-col w3-half">
+                <div class="w3-row" id="assignment_user_search">
+                    <p>Find User:</p>
+                    <div class="w3-col l10">
+                        <p class="w3-row">
+                            <input id="search_input" type="text" name="user_name" value="" class="w3-input w3-border" placeholder="Type name" 
+                            onkeyup="if (this.value.length > 0) {$('#search_results').show();table_search('search_input','all_users',1)} else {$('#search_results').hide();reset_table_search('all_users');}"
+                            onfocus="toggle_table_search('search_results');" 
+                            />
+                        </p>
+                    </div>
+                	<p class="w3-right">
+                		<input class="w3-button w3-primary-color w3-round-medium" type="button" 
+                            onclick="submitModalForm('assignmentModalForm',
+                            '{{url_for('job.assignment_manager')}}',
+                            'assignment_manager_layout',
+                            '{{url_for('job.assignment_manager')}}{{job.job_id}}'
+                            )" 
+                            name="Add" value="Add" id="add_button"/>
+                	</p>
+                    <div id="search_results" class="w3-border" 
+                        style="z-index:10000;position:static;overflow-y: scroll;background-color:white;display:none">
+                        	<table id="all_users" class="datatable w3-table w3-striped w3-hoverable" >
+                        	{%if all_users %}
+                        		{% for user in all_users %}
+                        	    <tr onclick="$('#assignment_user_id').val({{user.id}});$('#search_input').val('{{ user.first_name }} {{ user.last_name }}');toggle_table_search('search_results');">
+                                    <td style="width:1pt;"><span style="display:none;">{{ user.id }}</span></td>
+                        			<td>{{ user.first_name }} {{ user.last_name }}</td>
+                        		</tr>
+                        		{% endfor %}
+                                {% else %}
+                                <tr>
+                        			<td>No Users with the required skills</td>
+                                </tr>
+                                {% endif %}
+                        	  </table>
+                    </div>
+                    </div>
+                    <p style="text-align:left">
+                        Comment:<br>
+                        <textarea class="w3-small" rows="4" style="width:100%" name="attendance_comment" 
+                        placeholder=""
+                        >{{ signup.attendance_comment | default("", True) }}</textarea>
+                    </p>
+                </div>
+                <p class="w3-col w3-half w3-center">
+                    {% set open_positions = job.max_positions - job.event_filled_positions + signup.positions %}
+                    {% if open_positions >= 0 %}
+                        {{ open_positions }} positions open<br>
+                    {% else %}
+                        {{ filled_positions }} positions filled. (requested max: {{ job.max_positions }})<br>
+                    {% endif %}
+                    <input type="hidden" id="positions" name='positions' value="1" />
+                </p>
+            </div>
+            <p class="w3-right">
+        		<input class="w3-button w3-primary-color w3-round-medium" type="button" 
+                    onclick="submitModalForm('assignmentModalForm',
+                    '{{url_for('job.assignment_manager_done')}}',
+                    'job-list',
+                    '{{url_for('job.get_job_list_for_event')}}{{job.event_id}}/'
+                    );" 
+                    name="done" value="Done" id="done_button"/>
+            </p>
+        </form>
+    </div>
+    <div class="w3-hide-large">
+        <!-- to ensure the dialog will scroll in mobile -->
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+    </div>
+</div>

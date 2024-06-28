@@ -1,0 +1,90 @@
+<div id="job-head{{ job.job_id }}" class="w3-row w3-secondary-color job-contain job-date-contain" >
+    <div class="w3-col l2 m2 w3-hide-small">&nbsp;</div>
+    <div class="w3-col l10 m10 w3-topbar ">
+        {% set participant_list = [] %}
+        {% if job.participants[job.job_id] %}
+        {% set participant_list = job.participants[job.job_id]['users']%}
+        {% endif %}
+        <p>
+            <strong>{{ job.job_title | truncate(40) }}</strong>
+            <br><span class="w3-small"><em>Shift Time:</em> {{ job.start_date | local_time_string | lower }}
+            - {{ job.end_date | local_time_string | lower }}</span>
+            {% if job.job_filled_positions >= job.max_positions %}<em>(Full)</em>{% endif %}
+            </span>
+        </p>
+        <div class="w3-small">
+                <p><em>Job location:</em><br>
+                    <strong>{{ job.job_loc_name | default("tbd", True ) }}</strong> 
+            {% if job.job_loc_id %}
+                    <a href="{{ url_for('calendar.event')}}{{job.event_id}}">(Map)</a>
+            {% endif %}
+            </p>
+        </div>
+        
+    </div>
+    <div class="w3-row ">
+        <div class="w3-col l2 m2 w3-hide-small">&nbsp;</div>
+            <div class="w3-col l6 m6 s6">
+                <p class="w3-small" id="job_description_toggle_{{job.job_id}}" onclick="$('#job_description_{{job.job_id}}, #job_description_toggle_{{job.job_id}}').toggle();"
+                style="cursor:pointer;"><em>Show Job Description</em>
+                </p>
+                
+                <div id="job_description_{{job.job_id}}" style="display:none;">
+                    <p class="w3-small" onclick="$('#job_description_{{job.job_id}}, #job_description_toggle_{{job.job_id}}').toggle();"
+                    style="cursor:pointer;"><em>Hide Job Description</em>
+                    </p>
+                    <div class="w3-small w3-white w3-border">
+                        {{ job.job_description | render_markdown }}
+                    </div>
+                </div>
+                <p>{{job.job_filled_positions}} of {{job.max_positions}} positions filled.</p>
+                <div id="job_{{job.job_id}}_participants" >
+                {% set initials_list = []%}
+                {% set user_data_list = []%}
+                {% if job.participants[job.job_id] %}
+                {% set initials_list = job.participants[job.job_id]['initials']%}
+                {% set user_data_list = job.participants[job.job_id]['user_data'] %}
+                {% endif %}
+                <div class="w3-small">
+                    {# (version for initial list.) if is_admin and  user_data_list #}
+                    {% if user_data_list %}
+                    <p style="margin:10pt"> 
+                        <strong>Signed up:</strong>
+                        {% for i in range(user_data_list|length)%}
+                        {{user_data_list[i].user_name}}{% if i < (user_data_list | length) -1 %},{% endif %}
+                        {% endfor %}
+                    </p>
+                    {% elif initials_list or False %}
+                    <p style="margin:10pt"> 
+                        {% for initials in initials_list %}
+                        <span class="w3-circle w3-primary-color participant-badge" >{{initials}}</span>
+                        {% endfor %}
+                    </p>
+                {% else %}
+                    &nbsp;
+                {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="w3-col l2 m2 s6">
+            <p style="text-align:center">
+                {% if job.job_filled_positions >= job.max_positions and session['user_id'] not in participant_list %}
+                <a class="w3-button w3-grey w3-round-medium w3-medium" >Full</a>
+                {% elif job.is_past_event %}
+                <a class="w3-button w3-grey w3-round-medium w3-medium" >Event is passed</a>
+                {% elif job.event_status.lower() != 'scheduled' and session['user_id'] not in participant_list%}
+                <a class="w3-button w3-grey w3-round-medium w3-medium" >Not Available</a>
+                {% else %}
+                <a class="w3-button w3-primary-color w3-round-medium w3-medium" 
+                {% if g.user %}
+                onclick="editFromList('{{ url_for('signup.signup')}}{{ job.job_id }}')"
+                {% else %}
+                href="{{ url_for('signup.signup')}}{{ job.job_id }}"
+                {% endif %}
+                >{% if job.user_job_positions %}Your Spot{% else %}Sign Up{% endif %}</a>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</div>
+
